@@ -10,11 +10,11 @@ pipeline {
         }
         stage('Build Docker Image') {
             when {
-                branch 'master'
+                branch 'development'
             }
             steps {
                 script {
-                    app = docker.build("willbla/train-schedule")
+                    app = docker.build("ankur1825/train-schedule")
                     app.inside {
                         sh 'echo $(curl localhost:8080)'
                     }
@@ -23,7 +23,7 @@ pipeline {
         }
         stage('Push Docker Image') {
             when {
-                branch 'master'
+                branch 'development'
             }
             steps {
                 script {
@@ -36,7 +36,7 @@ pipeline {
         }
         stage('DeployToProduction') {
             when {
-                branch 'master'
+                branch 'development'
             }
             steps {
                 input 'Deploy to Production?'
@@ -44,13 +44,14 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'webserver_login', usernameVariable: 'USERNAME', passwordVariable: 'USERPASS')]) {
                     script {
                         sh "ssh $USERNAME@$prod_ip \"docker pull willbla/train-schedule:${env.BUILD_NUMBER}\""
+                        sh "sshpass -p '$USERPASS' -v ssh -o StrictHostKeyChecking=no $USERNAME@$prod_ip \"docker pull ankur1825/train-schedule:${env.BUILD_NUMBER}\""
                         try {
                             sh "sshpass -p '$USERPASS' -v ssh -o StrictHostKeyChecking=no $USERNAME@$prod_ip \"docker stop train-schedule\""
                             sh "sshpass -p '$USERPASS' -v ssh -o StrictHostKeyChecking=no $USERNAME@$prod_ip \"docker rm train-schedule\""
                         } catch (err) {
                             echo: 'caught error: $err'
                         }
-                        sh "sshpass -p '$USERPASS' -v ssh -o StrictHostKeyChecking=no $USERNAME@$prod_ip \"docker run --restart always --name train-schedule -p 8080:8080 -d willbla/train-schedule:${env.BUILD_NUMBER}\""
+                        sh "sshpass -p '$USERPASS' -v ssh -o StrictHostKeyChecking=no $USERNAME@$prod_ip \"docker run --restart always --name train-schedule -p 8080:8080 -d ankur1825/train-schedule:${env.BUILD_NUMBER}\""
                     }
                 }
             }
